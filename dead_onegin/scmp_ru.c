@@ -5,6 +5,10 @@
 
 //*************************************************************************************************
 
+/*!
+    The same for scmp() from file scmp_en.c function, but compares russian strings.
+*/
+
 int scmp (const void *s1, const void *s2)
 {
     if (!s1 || !s2)
@@ -23,7 +27,7 @@ int scmp (const void *s1, const void *s2)
         while (str1 [pos1] && !isalpha_ru (str1 [pos1]))
                 pos1++;
 
-        while (str1 [pos1] && !isalpha_ru (str2 [pos2]))
+        while (str2 [pos2] && !isalpha_ru (str2 [pos2]))
                 pos2++;
 
         wchar_t let1 = towlower (str1 [pos1]);
@@ -57,26 +61,30 @@ int scmp (const void *s1, const void *s2)
 
 //*************************************************************************************************
 
+/*!
+    The same for scmp_rev() from scmp_en.c fuctions, but compares russian strings.
+*/
+
 int scmp_rev (const void *s1, const void *s2)
 {
     if (!s1 || !s2)
     {
-        perror ("scmp () received invalid strs: \n");
+        perror ("scmp_rev () received invalid strs: \n");
         exit (EXIT_FAILURE);
     }
 
     wchar_t *str1 = ((const Str *) s1)->str;
     wchar_t *str2 = ((const Str *) s2)->str;
 
-    int pos1 = ((const Str *) s1)->slen;
-    int pos2 = ((const Str *) s2)->slen;
+    int pos1 = ((const Str *) s1)->slen - 1;
+    int pos2 = ((const Str *) s2)->slen - 1;
 
     while (pos1 >= 0 && pos2 >= 0)
     {
-        while (pos1 >= 0 && !isalpha_ru (str1 [pos1]))
+        while (pos1 > 0 && !isalpha_ru(str1[pos1]))
                 pos1--;
 
-        while (pos2 >= 0 && !isalpha_ru (str2 [pos2]))
+        while (pos2 > 0 && !isalpha_ru(str2[pos2]))
                 pos2--;
 
         wchar_t let1 = towlower (str1 [pos1]);
@@ -88,7 +96,7 @@ int scmp_rev (const void *s1, const void *s2)
                 return let1 - let2;
             if (ISSPL(let1))
             {
-                if (let2 < L'ж') return  1;                
+                if (let2 < L'ж') return  1;
                 if (let2 > L'е') return -1;
             }
             if (ISSPL(let2))

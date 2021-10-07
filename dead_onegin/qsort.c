@@ -2,6 +2,12 @@
 
 //*************************************************************************************************
 
+/*!
+    \brief sorts array
+    \param[in] array - ptr to array's start, asize - array's size, esize - array's elem size, scmp - comparator.
+    Function the same as classic quick sort.
+*/
+
 void qsort_my (void *array, size_t asize, size_t esize, int (*scmp) (const void *, const void *))
 {
     void *stdval = array + esize * (asize - 1);
@@ -26,6 +32,11 @@ void qsort_my (void *array, size_t asize, size_t esize, int (*scmp) (const void 
 }
 
 //*************************************************************************************************
+
+/*!
+    \param[in] e1 - first element, e2 - second element, esize - size of elements.
+    Function needed for qsort; swaps e1 and e2.
+*/
 
 void swapv (void *e1, void *e2, size_t esize)
 {

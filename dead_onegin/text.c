@@ -4,6 +4,11 @@
 
 //*************************************************************************************************
 
+/*!
+    \param[in] file - struct of type File, that keeps info about sorted file; argc - num of main() args; argv - array w main()'s args (argv[1] - sorted file name).
+    Function that open file and allocate buffer for it.
+*/
+
 int opener (File *file, int argc, char **argv)
 {
     if (argc >= 2)
@@ -13,7 +18,7 @@ int opener (File *file, int argc, char **argv)
 
     if (!(file->text))
     {
-        perror ("problema with reading file: \n");
+        perror ("problema with reading file");
         exit (EXIT_FAILURE);
     }
 
@@ -24,7 +29,7 @@ int opener (File *file, int argc, char **argv)
 
     if (!(file->buf_char))
     {
-        perror ("can't read file into buffer: \n");
+        perror ("can't read file into buffer");
         exit (EXIT_FAILURE);
     }
 
@@ -33,12 +38,17 @@ int opener (File *file, int argc, char **argv)
 
 //*************************************************************************************************
 
+/*!
+    \param[in] file - struct of type File, that keeps info about sorted file.
+    Allocates massive for ptrs of string's starts; counts strlen; change '\n' and '\r' to '\0'.
+*/
+
 void str_data (File *file)
 {
     file->strs = (Str *) calloc (file->nstr, sizeof (Str));
     if (!(file->strs))
     {
-        perror ("can't allocate memory for str ptr array: \n");
+        perror ("can't allocate memory for str ptr array:");
         exit (EXIT_FAILURE);
     }
 
@@ -52,7 +62,7 @@ void str_data (File *file)
         }
 
         if (let < file->size)
-            file->strs[num].str  = file->buf + let;
+            file->strs[num].str = file->buf + let;
 
         size_t len = 0;
         while (let < file->size && file->buf [let] != '\n' && file->buf [let] != '\r')
@@ -70,12 +80,16 @@ void str_data (File *file)
 
 //*************************************************************************************************
 
+/*!
+    Reads and decode file to buffer, allocated in opener(); counts string amount.
+*/
+
 void get_file (File *file)
 {
     size_t nsymb = fread (file->buf_char, sizeof (char), file->size, file->text);
     if (!(nsymb == file->size))
     {
-        printf ("fread returned invalid value: %lu;\nfile size = %lu.\n", nsymb, file->size);
+        perror ("fread returned invalid value: %lu; file size = %lu.", nsymb, file->size);
         exit (EXIT_FAILURE);
     }
 
@@ -94,28 +108,58 @@ void get_file (File *file)
             let++;
     }
 
-    if (decode (file)) 
+    file->buf = calloc (file->size, sizeof (wchar_t));
+    if (!file->buf)
+    {
+        perror("can't allocate memory for wchar_t buf");
+        exit(EXIT_FAILURE);
+    }
+
+    size_t wchars_count = mbstowcs (file->buf, file->buf_char, file->size);
+    if (wchars_count == (size_t) -1)
         printf ("Error: decode() returned 1:\n"
                 "    unknown file coding system:\n"
                 "    byte amount >= 4 or = 1.\n");
+
+    file->buf = realloc (file->buf, wchars_count * sizeof(wchar_t));
+    if(!file->buf)
+    {
+        perror("can't reallocate file.buf");
+        exit(EXIT_FAILURE);
+    }
+
+    file->size = wchars_count;
 }
 
 //*************************************************************************************************
 
-void print_file (File *file, char *name)
+/*!
+    Prints file to file w name as the second function arg.
+*/
+
+void print_file (File *file, char *name, int param)
 {
     FILE *output = fopen (name, "w");
 
-    for (size_t num = 0; num < file->nstr; num++)
-        if (line_chk (file->strs[num].str))
-            fprintf (output, "%ls\n", formater(file->strs[num].str));
-        else
-            num++;
+    if (param == 1)
+        for (size_t num = 0; num < file->nstr; num++)
+            if (line_chk (file->strs[num].str))
+                fprintf (output, "%ls\n", formater(file->strs[num].str));
+            else
+                num++;
+
+    if (param == 0)
+        for (size_t num = 0; num < file->nstr; num++)
+            fprintf(output, "%ls\n", file->strs[num].str);
 
     fclose (output);
 }
 
 //*************************************************************************************************
+
+/*!
+    Function that helps to print text; moves print start of string, that starts from ' ' or '\t'.
+*/
 
 wchar_t *formater (wchar_t *str_start)
 {
@@ -128,82 +172,11 @@ wchar_t *formater (wchar_t *str_start)
 
 //*************************************************************************************************
 
-int decode (File *file)
-{
-    wchar_t *buf_dec = calloc (file->size, sizeof (wchar_t));
-    if (!buf_dec)
-    {
-        printf ("Error: decode () line %d:\n", __LINE__ - 3);
-        printf ("    can't allocate memory for\n"
-                "    buffer with decoded symbols.\n");
-        exit (EXIT_FAILURE);
-    }
-    size_t symb = 0;
-
-    for (size_t let = 0; let < file->size; let++)
-    {
-        size_t shift    = 7;
-        size_t byte_amt = 0;
-    
-        while (file->buf_char [let] & (1 << shift) && shift)
-        {
-            byte_amt++;
-            shift--;
-        }
-
-        if (byte_amt == 1 || byte_amt > 4)
-        {
-            return 1;
-        }
-
-        if (!byte_amt)
-        {
-            buf_dec [symb] = (wchar_t) file->buf_char [let];
-            symb++;
-            continue;
-        }
-
-        wchar_t code = 0;
-        wchar_t fund = 1;
-
-        let += byte_amt - 1;
-
-        for (size_t bit = 0; bit < CODE_POSITIONS; bit++)
-        {
-            if (bit % 8 == 6)
-            {
-                bit += 2;
-                let--;
-            }
-            code += fund * ((file->buf_char [let] >> (bit % 8)) & 1);
-            fund *= 2;
-        }
-
-        let += byte_amt - 1;
-        buf_dec [symb] = code;
-        symb++;
-    }
-
-    free (file->buf_char);
-
-    buf_dec = (wchar_t *) realloc (buf_dec, symb * sizeof (wchar_t));
-    if (!buf_dec)
-    {
-        printf ("Error: decode () line %d:\n", __LINE__);
-        printf ("    can't reallocate memory for\n"
-                "    buffer with decoded symbols.\n");
-        exit (EXIT_FAILURE);
-    }
-
-    file->buf = buf_dec;
-    file->size = symb;
-
-    return 0;
-}
-
-//*************************************************************************************************
-
 #ifdef EN
+
+/*!
+    Checks does line have letters.
+*/
 
 int line_chk (wchar_t *line)
 {
@@ -227,17 +200,20 @@ int line_chk (wchar_t *line)
 #define ISLET(letter) letter >= L'А' && letter <= L'я'
 #define ISSPL(letter) letter == L'Ё' || letter == L'ё'
 
+/*!
+    Russian variant for isaplha(); checks is wchar_t symbol russian letter.
+*/
+
 int isalpha_ru (wchar_t letter)
 {
-    if (ISLET(letter))
-        return 1;
-    if (ISSPL(letter))
-        return 1;
-
-    return 0;
+    return ISLET(letter) || ISSPL(letter);
 }
 
 //*************************************************************************************************
+
+/*!
+    Checks does line have russian letters.
+*/
 
 int line_chk (wchar_t *line)
 {

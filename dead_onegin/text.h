@@ -34,7 +34,7 @@ int decode        (File *file);
 int opener        (File *file, int argc, char **argv);
 void str_data     (File *file);
 void get_file     (File *file);
-void print_file   (File *file, char *name);
+void print_file   (File *file, char *name, int param);
 wchar_t *formater (wchar_t *str_start);
 
 //*************************************************************************************************
